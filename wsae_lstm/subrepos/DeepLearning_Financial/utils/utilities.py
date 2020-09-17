@@ -33,6 +33,8 @@ def prepare_data_lstm(x_encoded, y_close, time_steps, log_return=True, train=Tru
     if log_return==False:
         y_close = y_close.pct_change()[1:]
     else:
+        if 0 in y_close:
+            y_close.loc[y_close == 0] = 0.0025
         y_close = (np.log(y_close) - np.log(y_close.shift(1)))[1:] # the log return, i.e. ln(y_t/y_(t-1))
 
     if train:           
@@ -63,7 +65,7 @@ class ExampleDataset(Dataset):
         return sample
 
 
-def evaluate_lstm(dataloader, model, criterion):
+def evaluate_lstm(dataloader, model, criterion, use_gpu=False):
 
     pred_val = []
     target_val = []
@@ -80,17 +82,26 @@ def evaluate_lstm(dataloader, model, criterion):
         if len(sample_x) != 0:
 
             sample_x = np.stack(sample_x)
-            input = Variable(torch.FloatTensor(sample_x), requires_grad=False)
-            input = torch.transpose(input, 0, 1)
+            model_input = Variable(torch.FloatTensor(sample_x), requires_grad=False)
+            model_input = torch.transpose(model_input, 0, 1)
             target = Variable(torch.FloatTensor(sample["y"].values), requires_grad=False)
+            if use_gpu == True:
+                model_input = model_input.clone().detach().cuda()
+                target = target.clone().detach().cuda()
 
-            out = model(input)
+            out = model(model_input)
             out = out.reshape(-1)
             loss = criterion(out, target)
 
-            loss_val += float(loss.data.numpy())
-            pred_val.extend(out.data.numpy().flatten().tolist())
-            target_val.extend(target.data.numpy().flatten().tolist())
+            if use_gpu == True:
+                loss_val += float(loss.data)
+                pred_val.extend(out.cpu().data.numpy().flatten().tolist())
+                target_val.extend(target.cpu().data.numpy().flatten().tolist())
+
+            else:
+                loss_val += float(loss.data.numpy())
+                pred_val.extend(out.data.numpy().flatten().tolist())
+                target_val.extend(target.data.numpy().flatten().tolist())
 
     return loss_val, pred_val, target_val
 
@@ -120,6 +131,7 @@ def backtest(predictions, y):
             index.append(index[-1])
 
     return index, real
+
 
 
 def save_checkpoint(state, is_best, filename='checkpoint.pth.tar', name="checkpoint"):

@@ -18,12 +18,19 @@ class Sequence(nn.Module):
         self.lstm = nn.LSTM(self.nb_features, self.hidden_size, self.nb_layers, dropout=dropout)
         self.lin = nn.Linear(self.hidden_size,1)
 
-    def forward(self, input):
-        h0 = Variable(torch.zeros(self.nb_layers, input.size()[1], self.hidden_size))
-        #print(type(h0))
-        c0 = Variable(torch.zeros(self.nb_layers, input.size()[1], self.hidden_size))
+    def forward(self, model_input):
+
+        if model_input.device.type == 'cuda':
+            h0 = Variable(torch.zeros(self.nb_layers, model_input.size()[1], self.hidden_size).cuda())
+            #print(type(h0))
+            c0 = Variable(torch.zeros(self.nb_layers, model_input.size()[1], self.hidden_size).cuda())
+        else:
+            h0 = Variable(torch.zeros(self.nb_layers, model_input.size()[1], self.hidden_size))
+            # print(type(h0))
+            c0 = Variable(torch.zeros(self.nb_layers, model_input.size()[1], self.hidden_size))
         #print(type(c0))
-        output, hn = self.lstm(input, (h0, c0))
+        output, hn = self.lstm(model_input, (h0, c0))
         #output = F.relu(self.lin(output))
-        out = self.lin(output[-1])
+
+        out = self.lin(output[-1]) # use the last hidden output
         return out

@@ -58,8 +58,9 @@ denoised_tvt_interval_data_dict = denoise_periods(tvt_interval_data_dict)
 final_denoised_data_dict = scale_periods(denoised_tvt_interval_data_dict)
 
 # gpu settings
-gpu_id = '0'
+gpu_id = '1'
 device = torch.device("cuda:"+gpu_id if torch.cuda.is_available() else "cpu")
+use_gpu = True
 # -----------------------------------------------------------------------------------------------------------
 
 
@@ -92,26 +93,28 @@ for index_name, index_dict in final_denoised_data_dict.items(): # train and pred
         if roll_num == 1:
             auto1 = Autoencoder(denoised_train_x.shape[1], num_hidden_1)
         auto1.cuda()
-        auto1.fit(torch.tensor(denoised_train_x.values).cuda(), torch.tensor(denoised_val_x.values).cuda(), n_epoch=n_epoch)
+        auto1.fit(denoised_train_x.values, denoised_val_x.values, use_gpu=use_gpu, n_epoch=n_epoch)
 
-        train_inputs = torch.autograd.Variable(torch.from_numpy(denoised_train_x.values.astype(np.float32)))
-        val_inputs = torch.autograd.Variable(torch.from_numpy(denoised_val_x.values.astype(np.float32)))
+        train_inputs = torch.autograd.Variable(torch.from_numpy(denoised_train_x.values.astype(np.float32)).cuda())
+        val_inputs = torch.autograd.Variable(torch.from_numpy(denoised_val_x.values.astype(np.float32)).cuda())
 
         if roll_num == 1:
             auto2 = Autoencoder(num_hidden_1, num_hidden_2)
         auto2.cuda()
-        train_auto1_out = auto1.encoder(train_inputs).data.numpy()
-        val_auto1_out = auto1.encoder(val_inputs).data.numpy()
-        auto2.fit(train_auto1_out, val_auto1_out, n_epoch=n_epoch)
+        train_auto1_out = auto1.encoder(train_inputs).data
+        val_auto1_out = auto1.encoder(val_inputs).data
+        train_auto1_out.cuda()
+        torch.tensor(val_auto1_out).cuda()
+        auto2.fit(train_auto1_out, val_auto1_out, use_gpu=use_gpu, n_epoch=n_epoch)
 
         if roll_num == 1:
             auto3 = Autoencoder(num_hidden_2, num_hidden_3)
         auto3.cuda()
-        train_auto1_out = torch.autograd.Variable(torch.from_numpy(train_auto1_out.astype(np.float32)))
-        val_auto1_out = torch.autograd.Variable(torch.from_numpy(val_auto1_out.astype(np.float32)))
-        train_auto2_out = auto2.encoder(train_auto1_out).data.numpy()
-        val_auto2_out = auto2.encoder(val_auto1_out).data.numpy()
-        auto3.fit(train_auto2_out, val_auto2_out, n_epoch=n_epoch)
+        train_auto1_out = torch.autograd.Variable(train_auto1_out.clone().detach().cuda())
+        val_auto1_out = torch.autograd.Variable(val_auto1_out.clone().detach().cuda())
+        train_auto2_out = auto2.encoder(train_auto1_out)
+        val_auto2_out = auto2.encoder(val_auto1_out)
+        auto3.fit(train_auto2_out, val_auto2_out, use_gpu=use_gpu, n_epoch=n_epoch)
 
         if roll_num == 1:
             auto4 = Autoencoder(num_hidden_3, num_hidden_4)

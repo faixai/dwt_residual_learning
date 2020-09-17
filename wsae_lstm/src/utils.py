@@ -86,22 +86,24 @@ def pickle_load(path_filename):
 def tvt_split(df):
     """Train-Validate-Test split of data for continous training 
     as defined in Bao et al., 2017."""
+
     dict_dataframes = {}
     train = df.index[0]
     validate = df.index[0] + monthdelta(24) 
     test = df.index[0] + monthdelta(27) 
     test_end = df.index[0] + monthdelta(30) 
-    df_train = pd.DataFrame(df[(df.index >= train) & (df.index <= validate)])
-    df_validate = pd.DataFrame(df[(df.index >= validate) & (df.index <= test)])
-    df_test = pd.DataFrame(df[(df.index >= test) & (df.index <= test_end)])
-    dict_dataframes ={1:df_train,2:df_validate,3:df_test}
+    df_train = pd.DataFrame(df[(df.index >= train) & (df.index < validate)])
+    df_validate = pd.DataFrame(df[(df.index >= validate) & (df.index < test)])
+    df_test = pd.DataFrame(df[(df.index >= test) & (df.index < test_end)])
+    dict_dataframes = {1:df_train,2:df_validate,3:df_test}
     return dict_dataframes
 
 def dict_df_tvt_split(df):
     """Subfunction of dd_tvt_split()."""
+    df = df.set_index(df['date'])
     subdict_dataframes = {}
     for key in df:
-        subdict_dataframes[key] =tvt_split(df[key])
+        subdict_dataframes[key] = tvt_split(df[key])
     return subdict_dataframes
 
 def dd_tvt_split(dict_dataframes):
@@ -110,5 +112,28 @@ def dd_tvt_split(dict_dataframes):
     subdict_dataframes = {}
     for key in dict_dataframes:
         #print(key)
-        subdict_dataframes[key] = dict_df_tvt_split(dict_dataframes[key])
+        if type(dict_dataframes[key]) == dict:
+            subdict_dataframes[key] = dict_interval_tvt_split(dict_dataframes[key])
+        else:
+            subdict_dataframes[key] = dict_df_tvt_split(dict_dataframes[key])
+
     return subdict_dataframes
+
+def dict_interval_tvt_split(dic):
+    subdict_dataframes = {}
+    for key in dic:
+        subdict_dataframes[key] = tvt_split(dic[key])
+
+    return subdict_dataframes
+
+def return_to_price(last_price, price_list, returns):
+    #from functools import reduce
+    start_price = last_price
+    new_price_list = []
+    for i, r in enumerate(returns):
+        new_price = start_price * (1+r)
+        new_price_list.append(new_price)
+        start_price = price_list[i]
+    return new_price_list
+    #reduce(lambda x, y : x*(1+y), [start_price, *returns]) # calculate last price
+

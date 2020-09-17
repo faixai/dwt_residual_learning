@@ -397,7 +397,7 @@ for n in range(num_iterations):
     plt.scatter(range(len(preds_test)), preds_test)
     #plt.scatter(range(len(y_test_lst)), y_test_lst)
     plt.scatter(range(len(temp2)), temp2)
-    plt.savefig("./plot/test_preds"+str(n)+".png/tmp/.X11-unix")
+    plt.savefig("./plot/test_preds"+str(n)+".png")
 
     # ---------------------------------------------------------------------------
     # ------------------ STEP 6: BACKTEST (ARTICLE WAY) -------------------------
