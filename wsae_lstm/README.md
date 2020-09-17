@@ -1,3 +1,5 @@
+Source : https://github.com/timothyyu/wsae-lstm
+
 # wsae-lstm
 
 Repository that aims to implement the WSAE-LSTM model and replicate the results of said model as defined in *"A deep learning framework for financial time series using stacked autoencoders and long-short term memory"* by Wei Bao, Jun Yue, Yulei Rao (2017).
